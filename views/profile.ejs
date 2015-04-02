@@ -1,0 +1,277 @@
+<!doctype html>
+<html ng-app="gemStore">
+<head>
+    <title>Chattris</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+    <script type="text/javascript" src="views/angular.min.js"></script>
+    <script type="text/javascript" src="views/app.js"></script>
+    <script src="http://192.168.2.18:8080/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <style>
+        body        { padding-top:80px; word-wrap:break-word; cursor:default;}
+
+    </style>
+    <script type="text/javascript">
+    var socket = io.connect('http://192.168.2.18:8080');
+    $(window).load(function(){
+        var username = "<%= user.local.email %>";
+        console.log(username);
+        socket.emit('join', username);
+        socket.on('userjoino', function(data){
+            $('#users').empty();
+            $('#puser').empty();
+            $.each(data, function(key, value){
+                $('#users').append('<div class="alert alert-warning">'+key+'</div>');
+                $('#puser').append("<div class='list-group-item'><input type='button' id='whisper' class='btn btn-success' value='"+key+"'></li>");
+            });
+            var users = data;
+            console.log(users);
+        });
+        $('form').submit(function(e){
+            e.preventDefault();
+            var message = $('#msg').val();
+            if(message.length <= 0){
+                $('#boxf').append('<div class="alert alert-danger">Message cannot be left empty</div>');
+                var div = document.getElementById("boxf");
+                div.scrollTop = div.scrollHeight;
+            }else{
+            //var msgob = [nickname + ': ' + message];
+            //socket.emit('message', msgob);
+            socket.emit('message', message);
+            $('#boxf').append('<div class="alert alert-info"> Me: ' + message + '</div>' );
+            var div = document.getElementById("boxf");
+            div.scrollTop = div.scrollHeight;
+ 
+            $('#msg').val('');
+            }
+      });
+        socket.on('messages', function(data){
+            $("#boxf").append('<div class="alert alert-info" >' + data + '<p class="pull-right">' + '</div>');
+            var div = document.getElementById("boxf");
+            div.scrollTop = div.scrollHeight;
+            //document.getElementById('xyz').play();
+        });
+        socket.on('disuser', function(data){
+            $("#boxf").append('<div class="alert alert-info">Server: ' +data+" has left the chat" + "</div>");
+            var div = document.getElementById("boxf");
+            div.scrollTop = div.scrollHeight;
+        });
+
+        $('#pm').click(function(e){
+            var whisp = $('#whisp').val();
+            var recipent = $('#secret').val();
+            console.log(recipent);
+            socket.emit('whisper', {whisp: whisp, user: recipent, sender: username});
+            $('#whisp').val('');
+            $('#secret').val('');
+            return false;
+        });
+        $('#puser').on('click', '#whisper', function(){
+            var user2 = $(this).prop("value")
+            $('#secret').val(user2);
+            //$('#secret').val('YAaAY');
+           //$('#recipent').val(name);
+        });
+        //console.log($('#ButtonContainer').length);
+        socket.on('whisper', function(data){
+            console.log(data);
+            if(data.user === username){
+                $('#messes').append('<div class="alert alert-info" >' + data.sender + ': ' + data.whisp + "</div>");
+            }else{
+                //Do nothn
+            }
+        });
+
+        $('#bsearch').click(function(){
+            var query = $('#search').val();
+            console.log(query);
+            socket.emit('search', {query: query})
+        });
+
+        socket.on('err', function(data){
+            console.log('An error has occured');
+        });
+        socket.on('search', function(data){
+            $('#resultsearch').empty();
+            $('#resultsearch').append('<div class="panel panel-info"><div class="panel-heading"><h3 class="panel-title">'+ data.user +'</h3></div><div class="panel-body">Id:'+data.id + '</div></div>');
+        });
+        socket.on('searchfalse', function(data){
+            $('#resultsearch').empty();
+            $('#resultsearch').append('<div class="alert alert-danger">The user you searched for does not exist</div>');
+        });
+
+    });
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+</head>
+<body ng-controller="TabController as tab">
+   
+    <nav class="navbar navbar-default navbar-fixed-top" style='-moz-user-select: none; -webkit-user-select: none; -ms-user-select:none; user-select:none;-o-user-select:none;' 
+ unselectable='on'
+ onselectstart='return false;' 
+ onmousedown='return false;'>
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed visible-md" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only visible-xs hidden-lg">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="#"><img alt="Brand" src="views/icon.ico" class="img-circle"></a>
+    </div>
+
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li ng-class="{active: tab.isSet(1)}"><a ng-click="tab.setTab(1)">Home <span class="sr-only">(current)</span></a></li>
+        <li ng-class="{active: tab.isSet(2)}"><a ng-click="tab.setTab(2)">Find people</a></li>
+        <li ng-class="{active: tab.isSet(3)}"><a ng-click="tab.setTab(3)">Secrets</a></li>
+        <li class="dropdown pull-right visible-lg visible-md">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><%=user.local.email %> <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a href="/logout">Logout</a></li>
+            <li><a ng-click="tab.setTab(4)">Profile</a></li>
+          </ul>
+        </li>
+        <li class="dropdown visible-xs hidden-lg">
+          <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><%=user.local.email %> <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a href="/logout">Logout</a></li>
+            <li><a ng-click="tab.setTab(4)">Profile</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+    
+<div class="container"  ng-show="tab.isSet(1)">
+
+    <div class="page-header text-center">
+        <h1><span class="glyphicon glyphicon-home"></span>  Home</h1>
+    </div>
+
+    <div class="row">
+        <div class = "col-sm-8">
+            <div class="well" style="height: 500px;">
+                <h3  style="position: relative;">Shoutbox</h3>
+                <div id="boxf" style=" overflow-y: scroll; overflow-x:hidden; height: 370px;">
+                </div>
+                
+            </div>
+       </div>
+       <div class="col-sm-4">
+            <div class="well" style="height: 300px;">
+                <h3>Users</h3>
+                <div id="users" style="overflow-y: scroll; overflow-x:hidden; height: 230px;"></div>
+            </div>
+            <div class="well">
+                 <form>
+                     <input autocomplete="off" class="form-control" id="msg" name="msg" style="margin-top: 100px;" type="text" placeholder="Your message" > 
+                     <button class="btn btn-primary" id="sub" style="float:right;">Send!</button>
+                </form>
+            </div>
+       </div>
+
+</div>
+</div>
+
+<div class="container" ng-show="tab.isSet(2)">
+     <div class="page-header text-center">
+        <h1><span class="glyphicon glyphicon-user"></span>  Find other users</h1>
+    </div>
+    <div class="row">
+        <div class="col-sm-8">
+            <div class="well" style="height: 404px;">
+                <h3><span class="fa fa-user"></span> Results</h3>
+                <div id="resultsearch" style="height: 310px; overflow-y: scroll; overflow-x:hidden;">
+
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="well" style="height: 404px;">
+                <h3>Search for users</h3>
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Search" id="search">
+                    <div class="input-group-btn">
+                        <button class="btn btn-default" id="bsearch"><i class="glyphicon glyphicon-search"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container" ng-show="tab.isSet(3)">
+     <div class="page-header text-center">
+        <h1><span class="glyphicon glyphicon-send"></span>  Private messaging</h1>
+    </div>
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="well">
+                <h3>Messages received</h3>
+                <div id="messes" style="height: 300px; overflow-y: scroll; overflow-x:hidden;">
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="well">
+                <h4>Users List</h4>
+                <div class="list-group" id="puser" style="height: 300px; overflow-y: scroll; overflow-x:hidden;">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="input-group">
+                <span class="input-group-addon">
+                    <i class="glyphicon glyphicon-envelope"></i>
+                </span>
+                <input type="text" id="whisp" class="form-control" aria-label="..." placeholder="Message">
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="input-group">
+                <div class="input-group-addon">
+                    <i class="glyphicon glyphicon-user"></i>
+                </div>
+                <input type="text" class="form-control" id="secret" aria-label="..." placeholder="User to send to">
+                <div class="input-group-btn">
+                    <input type="button" class="btn btn-default" id="pm" aria-label="..." value="Go!">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container" ng-show="tab.isSet(4)">
+     <div class="page-header text-center">
+        <h1><span class="fa fa-anchor"></span>  Profile Page</h1>
+    </div>
+    <div class="row">
+        <div class="col-sm-4">
+            <div class="well" style="height: 204px; overflow-y: scroll; overflow-x:hidden;">
+                <h3><span class="fa fa-user"></span> Local</h3>
+
+                    <p>
+                        <strong>id</strong>: <%= user._id %><br>
+                        <strong>email</strong>: <%= user.local.email %><br>
+                        <strong>password</strong>: <%= user.local.password %>
+                    </p>
+
+            </div>
+        </div>
+        <div class="col-sm-8">
+            <div class="well" style="height: 204px; overflow-y: scroll; overflow-x:hidden;">
+                <h3>Update Profile</h3>
+
+            </div>
+        </div>
+        
+    </div>
+</div>
+</body>
+</html>
