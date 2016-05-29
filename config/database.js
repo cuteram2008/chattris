@@ -1,3 +1,3 @@
 module.exports = {
-	'url': 'mongodb://localhost/test'
+	'url': 'mongodb://username:password@your-database-url:your-database-port/your-database-name'
 };
